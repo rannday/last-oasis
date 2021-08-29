@@ -83,6 +83,10 @@ function build_update {
 function build_tmux {
 
   tmux_s="$SYSTEMD_DIR/master.service"
+  if [ -f "$tmux_s" ];  then
+    rm $tmux_s
+    rm "${SYSTEMD_DIR}/multi-user.target.wants/master.service"
+  fi
   touch $tmux_s
 
   echo "[Unit]" > $tmux_s
@@ -104,6 +108,10 @@ function build_tmux {
 function build_target {
 
   target_s="$SYSTEMD_DIR/oasis.target"
+  if [ -f "$target_s" ];  then
+    rm $target_s
+    rm "${SYSTEMD_DIR}/multi-user.target.wants/oasis.service"
+  fi
   touch $target_s
 
   requires="Requires="
@@ -125,6 +133,9 @@ function build_target {
 function build_service {
 
   service_s="$SYSTEMD_DIR/oasis@.service"
+  if [ -f "$service_s" ];  then
+    rm $service_s
+  fi
   touch $service_s
 
   echo "[Unit]" > $service_s
