@@ -162,9 +162,8 @@ function build_service {
 echo "Creating start scripts"
 for i in $(seq 1 $TOTAL)
 do
-  build_start $i $PORTS1 $PORTS2
-  PORTS1=$((PORTS1 + 1))
-  PORTS2=$((PORTS2 + 1))
+  build_start $i $PORTS
+  PORTS=$((PORTS + 1))
 done
 echo "Creating update scripts"
 build_update
