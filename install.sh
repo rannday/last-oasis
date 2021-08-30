@@ -55,7 +55,7 @@ function build_start {
   echo "export LD_LIBRARY_PATH=./linux64:\$LD_LIBRARY_PATH" >> $start_s
   echo "export SteamAppId=$APP_ID" >> $start_s
   echo "" >> $start_s
-  echo "/usr/bin/sh ${GAME_DIR}/MistServer.sh -log -force_steamclient_link -messaging -NoLiveServer -EnableCheats -backendapiurloverride=\"backend.last-oasis.com\" -identifier=$IDENT$1 -port=$2 -CustomerKey=$CUST_KEY -ProviderKey=$PROV_KEY -slots=$SLOTS -QueryPort=$3 -OverrideConnectionAddress=$IP" >> $start_s
+  echo "/usr/bin/sh ${GAME_DIR}/MistServer.sh -log -force_steamclient_link -messaging -NoLiveServer -EnableCheats -backendapiurloverride=\"backend.last-oasis.com\" -identifier=$IDENT$1 -port=$2 -CustomerKey=$CUST_KEY -ProviderKey=$PROV_KEY -slots=$SLOTS -QueryPort=27015 -OverrideConnectionAddress" >> $start_s
   echo "" >> $start_s
   echo "export LD_LIBRARY_PATH=\$templdpath" >> $start_s
 
