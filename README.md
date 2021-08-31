@@ -4,18 +4,18 @@
 ## Ubuntu 20.04
 
 ## Install prerequisites
-`sudo apt install git tmux`
-
-## Create an unprivileged user
-`sudo adduser oasis`
-
-## Install steamcmd
 ```
 sudo apt update && sudo apt upgrade -y
 sudo add-apt-repository -y multiverse
 sudo dpkg --add-architecture i386
 sudo apt update
-sudo apt install steamcmd -y
+sudo apt install lib32gcc1 steamcmd git tmux -y
+```
+
+## Create an unprivileged user
+```
+sudo adduser oasis
+sudo loginctl enable-linger oasis
 ```
 
 ## Switch to user
@@ -28,15 +28,16 @@ sudo apt install steamcmd -y
 ## Edit conf.env to your needs
 `nano last-oasis/conf.env`
 
-## Create app
-`sudo nano /etc/ufw/applications.d/last-oasis`
-
+## Open firewall
+### Change according to needs
 ```
-[LastOasis]
-title=Last Oasis
-description=game
-ports=5555:5565/udp|27015:27025/udp
+sudo ufw allow 5555:5569/udp
+sudo ufw allow 27015:27029/udp
 ```
 
-`sudo ufw app update LastOasis`
-`sudo ufw allow LastOasis`
+## Install
+```
+./install.sh 1
+./install.sh 5
+./install.sh 15
+```
