@@ -81,7 +81,7 @@ function build_tmux {
   echo "ExecStop=/usr/bin/tmux kill-session -t master" >> $tmux_s
   echo "" >> $tmux_s
   echo "[Install]" >> $tmux_s
-  echo "WantedBy=multi-user.target" >> $tmux_s
+  echo "WantedBy=default.target" >> $tmux_s
   systemctl --user daemon-reload
 }
 
@@ -97,7 +97,7 @@ function build_target {
   echo "$requires" >> $target_s
   echo "" >> $target_s
   echo "[Install]" >> $target_s
-  echo "WantedBy=multi-user.target" >> $target_s
+  echo "WantedBy=default.target" >> $target_s
   systemctl --user daemon-reload
 }
 
@@ -119,7 +119,7 @@ function build_service {
   echo "LimitNOFILE=100000" >> $service_s
   echo "" >> $service_s
   echo "[Install]" >> $service_s
-  echo "WantedBy=multi-user.target" >> $service_s
+  echo "WantedBy=default.target" >> $service_s
   systemctl --user daemon-reload
 }
 
