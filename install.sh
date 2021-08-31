@@ -1,53 +1,51 @@
 #!/bin/bash
 
-################################################################################
-source ./conf.env
-################################################################################
-GAME_DIR="$HOME/game"                    # Game files
-APP_ID=920720                            # Steam APP ID
-SYSTEMD_DIR="$HOME/.config/systemd/user" # Systemd user directory
-################################################################################
-# Input checking
-re='^[0-9]+$'
-# Check input is number
-if ! [[ $1 =~ $re ]] ; then
-  echo "ERROR: Enter a number" >&2; exit 1
-fi
-# Check number is less than 16
-if [ $1 -gt 15 ]; then
-  echo "ERROR: Enter a number less than 16" >&2; exit 1
-fi
-# Check number is greater than 0
-if [ $1 -lt 1 ]; then
-  echo "ERROR; enter a number greater than 0" >&2; exit 1
-fi
-TOTAL=$1
+TOTAL=1
 
-################################################################################
-# Create the game directory folder
-if [ ! -d "$GAME_DIR" ]; then
-  echo "Making game folder directory"
-  mkdir $GAME_DIR
-fi
+function check_config {
+  if [ ! -f "$PWD/conf.env" ]; then
+    echo "ERROR: Missing configuration file"
+    exit 1
+  fi
+  source ./conf.env
+}
 
-################################################################################
-# Check if file exist, if not, install game
-steam_id="${GAME_DIR}/Mist/Binaries/Linux/steam_appid.txt"
-echo $steam_id
-if [ ! -f "$steam_id" ]; then
-  /usr/games/steamcmd +login anonymous +force_install_dir $GAME_DIR +app_update $APP_ID validate +exit
+function check_input {
+  re='^[0-9]+$'
+  if ! [[ $1 =~ $re ]] ; then
+    echo "ERROR: Enter a number" >&2; exit 1
+  fi
+  if [ $1 -gt 15 ]; then
+    echo "ERROR: Enter a number less than 16" >&2; exit 1
+  fi
+  if [ $1 -lt 1 ]; then
+    echo "ERROR; enter a number greater than 0" >&2; exit 1
+  fi
+  TOTAL=$1
+}
 
-  touch $steam_id
-  echo "920720" > $steam_id
-fi
+function create_dirs {
+  mkdir -p $GAME_DIR
+  mkdir -p $UNIT_DIR
+}
 
-################################################################################
-# Build start script
+function check_services {
+  systemctl --user stop master.service
+  systemctl --user disable master.service
+  systemctl --user stop oasis.target
+  systemctl --user disable oasis.target
+}
+
+function install_game {
+  steam_id="${GAME_DIR}/Mist/Binaries/Linux/steam_appid.txt"
+  if [ ! -f "$steam_id" ]; then
+    /usr/games/steamcmd +login anonymous +force_install_dir $GAME_DIR +app_update $APP_ID_SRV validate +exit
+    echo "920720" > $steam_id
+  fi
+}
+
 function build_start {
-
   start_s="${GAME_DIR}/start$1.sh"
-  touch $start_s
-
   echo "#!/bin/sh" > $start_s
   echo "" >> $start_s
   echo "export TERM=roxterm" >> $start_s
@@ -55,40 +53,23 @@ function build_start {
   echo "export LD_LIBRARY_PATH=./linux64:\$LD_LIBRARY_PATH" >> $start_s
   echo "export SteamAppId=$APP_ID" >> $start_s
   echo "" >> $start_s
-  echo "/usr/bin/sh ${GAME_DIR}/MistServer.sh -log -force_steamclient_link -messaging -NoLiveServer -EnableCheats -backendapiurloverride=\"backend.last-oasis.com\" -identifier=$IDENT$1 -port=$2 -CustomerKey=$CUST_KEY -ProviderKey=$PROV_KEY -slots=$SLOTS -QueryPort=27015 -OverrideConnectionAddress" >> $start_s
+  echo "/usr/bin/sh ${GAME_DIR}/MistServer.sh -log -force_steamclient_link -messaging -NoLiveServer -EnableCheats -backendapiurloverride=\"backend.last-oasis.com\" -identifier=$IDENT$1 -port=$2 -CustomerKey=$CUST_KEY -ProviderKey=$PROV_KEY -slots=$SLOTS -QueryPort=$3 -OverrideConnectionAddress=$IP" >> $start_s
   echo "" >> $start_s
   echo "export LD_LIBRARY_PATH=\$templdpath" >> $start_s
 
-  # Make executable
   chmod +x $start_s
 }
 
-################################################################################
-# Build update script
 function build_update {
-
   update_s="$GAME_DIR/update.sh"
-  touch $update_s
-
   echo "#!/bin/sh" > $update_s
   echo "" >> $update_s
-  echo "/usr/games/steamcmd +login anonymous +force_install_dir $GAME_DIR +app_update $APP_ID validate +exit" >> $update_s
-
-  # Make executable
+  echo "/usr/games/steamcmd +login anonymous +force_install_dir $GAME_DIR +app_update $APP_ID_SRV validate +exit" >> $update_s
   chmod +x $update_s
 }
 
-################################################################################
-# Build tmux master service
 function build_tmux {
-
-  tmux_s="$SYSTEMD_DIR/master.service"
-  if [ -f "$tmux_s" ];  then
-    rm $tmux_s
-    rm "${SYSTEMD_DIR}/multi-user.target.wants/master.service"
-  fi
-  touch $tmux_s
-
+  tmux_s="$UNIT_DIR/master.service"
   echo "[Unit]" > $tmux_s
   echo "Description=Master tmux service" >> $tmux_s
   echo "After=network-online.target" >> $tmux_s
@@ -101,43 +82,27 @@ function build_tmux {
   echo "" >> $tmux_s
   echo "[Install]" >> $tmux_s
   echo "WantedBy=multi-user.target" >> $tmux_s
+  systemctl --user daemon-reload
 }
 
-################################################################################
-# Build target service
 function build_target {
-
-  target_s="$SYSTEMD_DIR/oasis.target"
-  if [ -f "$target_s" ];  then
-    rm $target_s
-    rm "${SYSTEMD_DIR}/multi-user.target.wants/oasis.service"
-  fi
-  touch $target_s
-
+  target_s="$UNIT_DIR/oasis.target"
   requires="Requires="
   for i in $(seq 1 $TOTAL)
   do
     requires="${requires}oasis@${i}.service "
   done
-
   echo "[Unit]" > $target_s
   echo "Description=\"Last Oasis Worker\"" >> $target_s
   echo "$requires" >> $target_s
   echo "" >> $target_s
   echo "[Install]" >> $target_s
   echo "WantedBy=multi-user.target" >> $target_s
+  systemctl --user daemon-reload
 }
 
-################################################################################
-# Build main service template
 function build_service {
-
-  service_s="$SYSTEMD_DIR/oasis@.service"
-  if [ -f "$service_s" ];  then
-    rm $service_s
-  fi
-  touch $service_s
-
+  service_s="$UNIT_DIR/oasis@.service"
   echo "[Unit]" > $service_s
   echo "Description="Last Oasis Server #%i" >> $service_s
   echo "PartOf=oasis.target" >> $service_s
@@ -155,65 +120,34 @@ function build_service {
   echo "" >> $service_s
   echo "[Install]" >> $service_s
   echo "WantedBy=multi-user.target" >> $service_s
+  systemctl --user daemon-reload
 }
 
-################################################################################
-# Build scripts
-echo "Creating start scripts"
+function start_services {
+  systemctl --user start master.service
+  systemctl --user enable master.service
+  systemctl --user status master.service
+  systemctl --user start oasis.target
+  systemctl --user enable oasis.target
+  systemctl --user status oasis.target
+}
+
+check_config
+check_input $1
+create_dirs
+check_services
+install_game
 for i in $(seq 1 $TOTAL)
 do
-  build_start $i $PORTS
-  PORTS=$((PORTS + 1))
+  build_start $i $PORTS1 $PORTS2
+  PORTS1=$((PORTS1 + 1))
+  PORTS2=$((PORTS2 + 1))
 done
-echo "Creating update scripts"
 build_update
-
-################################################################################
-# Check services
-echo "Checking tmux master server status"
-tmux_service="$(systemctl --user is-active master.service)"
-if [ "${tmux_service}" = "active" ]; then
-  systemctl --user stop master.service
-  systemctl --user disable master.service
-fi
-echo "Checking oasis target status"
-oasis_target="$(systemctl --user is-active oasis.target)"
-if [ "${oasis_target}" = "active" ]; then
-  systemctl --user stop oasis.target
-  systemctl --user disable oasis.target
-fi
-
-echo "Reloading"
-systemctl --user daemon-reload
-
-if [ ! -d "$SYSTEMD_DIR" ]; then
-  echo "Creating systemd user directory"
-  mkdir -p $SYSTEMD_DIR
-fi
-
-################################################################################
-# Build services
-echo "Creating tmux service"
 build_tmux
-echo "Creating target service"
 build_target
-echo "Creating service"
 build_service
+start_services
 
-echo "Reloading"
-systemctl --user daemon-reload
-
-################################################################################
-# Start everything
-echo "Starting tmux master server"
-#systemctl --user enable --now master.service
-systemctl --user start master.service
-systemctl --user enable master.service
-systemctl --user status master.service
-
-echo "Starting oasis target service"
-systemctl --user start oasis.target
-systemctl --user enable oasis.target
-systemctl --user status oasis.target
-
-# END
+echo "Done! exiting"
+exit 0
